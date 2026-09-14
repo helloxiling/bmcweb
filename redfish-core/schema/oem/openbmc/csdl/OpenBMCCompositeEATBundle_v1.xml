@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edmx:Edmx xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx" Version="4.0">
+  <edmx:Reference Uri="http://docs.oasis-open.org/odata/odata/v4.0/errata03/csd01/complete/vocabularies/Org.OData.Core.V1.xml">
+    <edmx:Include Namespace="Org.OData.Core.V1" Alias="OData"/>
+  </edmx:Reference>
+  <edmx:Reference Uri="http://redfish.dmtf.org/schemas/v1/RedfishExtensions_v1.xml">
+    <edmx:Include Namespace="Validation.v1_0_0" Alias="Validation"/>
+    <edmx:Include Namespace="RedfishExtensions.v1_0_0" Alias="Redfish"/>
+  </edmx:Reference>
+  <edmx:Reference Uri="http://redfish.dmtf.org/schemas/v1/Resource_v1.xml">
+    <edmx:Include Namespace="Resource"/>
+    <edmx:Include Namespace="Resource.v1_0_0"/>
+  </edmx:Reference>
+  <edmx:DataServices>
+    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="OpenBMCCompositeEATBundle">
+      <Annotation Term="Redfish.OwningEntity" String="OpenBMC"/>
+    </Schema>
+    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="OpenBMCCompositeEATBundle.v1_0_0">
+      <Annotation Term="Redfish.OwningEntity" String="OpenBMC"/>
+      <Annotation Term="Redfish.Release" String="1.0"/>
+      <ComplexType Name="ComponentIntegrityCollection" BaseType="Resource.OemObject">
+        <Property Name="Actions" Type="OpenBMCCompositeEATBundle.v1_0_0.Actions"/>
+        <NavigationProperty Name="CompositeEATBundle" Type="OpenBMCCompositeEATBundle.v1_0_0.CompositeEATBundle"/>
+      </ComplexType>
+      <ComplexType Name="Actions" BaseType="Resource.OemActions"/>
+      <Action Name="GetCompositeEATBundle" IsBound="true">
+        <Parameter Name="OpenBMCCompositeEATBundle" Type="OpenBMCCompositeEATBundle.v1_0_0.Actions"/>
+        <Parameter Name="Nonce" Type="Edm.String" Nullable="false" MaxLength="44">
+          <Annotation Term="OData.Description" String="A base64-encoded 32-byte verifier nonce."/>
+          <Annotation Term="Validation.Pattern" String="^[A-Za-z0-9+/]{43}=$"/>
+        </Parameter>
+      </Action>
+      <EntityType Name="CompositeEATBundle" BaseType="Resource.v1_0_0.Resource">
+        <Annotation Term="Redfish.Uris">
+          <Collection>
+            <String>/redfish/v1/ComponentIntegrity/CompositeEATBundle</String>
+          </Collection>
+        </Annotation>
+        <Property Name="Status" Type="Edm.String" Nullable="false">
+          <Annotation Term="OData.Permissions" EnumMember="OData.Permission/Read"/>
+        </Property>
+        <Property Name="CompositeEATBundle" Type="Edm.String">
+          <Annotation Term="OData.Permissions" EnumMember="OData.Permission/Read"/>
+          <Annotation Term="OData.Description" String="The base64-encoded tag-602 CBOR Detached EAT Bundle."/>
+        </Property>
+      </EntityType>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>

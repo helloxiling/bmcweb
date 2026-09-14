@@ -1,0 +1,84 @@
+{
+    "$id": "https://github.com/openbmc/bmcweb/tree/master/redfish-core/schema/oem/openbmc/json-schema/OpenBMCCompositeEATBundle.v1_0_0.json",
+    "$schema": "http://redfish.dmtf.org/schemas/v1/redfish-schema-v1.json",
+    "copyright": "Copyright 2026 OpenBMC.",
+    "definitions": {
+        "Actions": {
+            "additionalProperties": false,
+            "properties": {
+                "#OpenBMCCompositeEATBundle.GetCompositeEATBundle": {
+                    "$ref": "#/definitions/GetCompositeEATBundle"
+                }
+            },
+            "type": "object"
+        },
+        "ComponentIntegrityCollection": {
+            "additionalProperties": false,
+            "properties": {
+                "@odata.type": {
+                    "type": "string"
+                },
+                "Actions": {
+                    "$ref": "#/definitions/Actions"
+                },
+                "CompositeEATBundle": {
+                    "$ref": "http://redfish.dmtf.org/schemas/v1/odata-v4.json#/definitions/idRef"
+                }
+            },
+            "type": "object"
+        },
+        "CompositeEATBundle": {
+            "additionalProperties": false,
+            "properties": {
+                "@odata.id": {
+                    "$ref": "http://redfish.dmtf.org/schemas/v1/odata-v4.json#/definitions/id"
+                },
+                "@odata.type": {
+                    "$ref": "http://redfish.dmtf.org/schemas/v1/odata-v4.json#/definitions/type"
+                },
+                "CompositeEATBundle": {
+                    "description": "The base64-encoded tag-602 CBOR Detached EAT Bundle.",
+                    "readonly": true,
+                    "type": "string"
+                },
+                "Id": {
+                    "$ref": "http://redfish.dmtf.org/schemas/v1/Resource.json#/definitions/Id",
+                    "readonly": true
+                },
+                "Name": {
+                    "$ref": "http://redfish.dmtf.org/schemas/v1/Resource.json#/definitions/Name",
+                    "readonly": true
+                },
+                "Status": {
+                    "enum": ["Idle", "InProgress", "Ready", "Error"],
+                    "readonly": true,
+                    "type": "string"
+                }
+            },
+            "required": ["@odata.id", "@odata.type", "Id", "Name", "Status"],
+            "type": "object"
+        },
+        "GetCompositeEATBundle": {
+            "additionalProperties": false,
+            "parameters": {
+                "Nonce": {
+                    "description": "A base64-encoded 32-byte verifier nonce.",
+                    "type": "string"
+                }
+            },
+            "properties": {
+                "target": {
+                    "format": "uri-reference",
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "owningEntity": "OpenBMC",
+    "release": "1.0",
+    "title": "#OpenBMCCompositeEATBundle.v1_0_0"
+}

@@ -6,6 +6,7 @@ schemas_to_install = {
 
 # Mapping from option key name to schemas that should be installed if that option is enabled
 schemas = {
+    'redfish-composite-eat': 'OpenBMCCompositeEATBundle',
     'redfish-provisioning-feature': 'OpenBMCComputerSystem',
     #'vm-nbdproxy': 'OpenBMCVirtualMedia',
 }

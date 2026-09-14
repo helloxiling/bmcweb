@@ -29,6 +29,7 @@ feature_options = [
     'redfish-allow-rotational-fans',
     'redfish-allow-simple-update',
     'redfish-bmc-journal',
+    'redfish-composite-eat',
     'redfish-component-integrity',
     'redfish-cpu-log',
     'redfish-dbus-log',
@@ -58,6 +59,10 @@ string_options = [
 ]
 
 int_options = ['http-body-limit', 'watchdog-timeout-seconds']
+
+if get_option('redfish-composite-eat').allowed() and not get_option('redfish-component-integrity').allowed()
+    error('redfish-composite-eat requires redfish-component-integrity')
+endif
 
 feature_options_string = '\n// Feature options\n'
 string_options_string = '\n// String options\n'

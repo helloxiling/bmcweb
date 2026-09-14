@@ -75,6 +75,14 @@ option(
     description: 'Enable Redfish ComponentIntegrity resources.',
 )
 
+# BMCWEB_REDFISH_COMPOSITE_EAT
+option(
+    'redfish-composite-eat',
+    type: 'feature',
+    value: 'disabled',
+    description: 'Enable the Redfish platform Composite EAT API.',
+)
+
 # BMCWEB_HOST_SERIAL_SOCKET
 option(
     'host-serial-socket',

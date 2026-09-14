@@ -10,6 +10,7 @@
 #include "dbus_utility.hpp"
 #include "error_messages.hpp"
 #include "logging.hpp"
+#include "openbmc/oem_composite_eat.hpp"
 #include "query.hpp"
 #include "registries/privilege_registry.hpp"
 #include "utils/collection.hpp"
@@ -323,6 +324,10 @@ inline void handleComponentIntegrityCollectionGet(
         "#ComponentIntegrityCollection.ComponentIntegrityCollection";
     asyncResp->res.jsonValue["@odata.id"] = "/redfish/v1/ComponentIntegrity";
     asyncResp->res.jsonValue["Name"] = "Component Integrity Collection";
+    if constexpr (BMCWEB_REDFISH_COMPOSITE_EAT)
+    {
+        composite_eat_utils::addCollectionExtension(asyncResp);
+    }
     collection_util::getCollectionMembers(
         asyncResp, boost::urls::url("/redfish/v1/ComponentIntegrity"),
         component_integrity_utils::componentIntegrityInterfaces,

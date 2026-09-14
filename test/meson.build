@@ -55,6 +55,7 @@ srcfiles_unittest = files(
     'redfish-core/lib/account_service_test.cpp',
     'redfish-core/lib/chassis_test.cpp',
     'redfish-core/lib/component_integrity_test.cpp',
+    'redfish-core/lib/oem_composite_eat_test.cpp',
     'redfish-core/lib/ethernet_test.cpp',
     'redfish-core/lib/fabric_test.cpp',
     'redfish-core/lib/log_services_dump_test.cpp',

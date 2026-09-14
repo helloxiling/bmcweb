@@ -37,6 +37,7 @@
 #include "network_adapter.hpp"
 #include "network_protocol.hpp"
 #include "odata.hpp"
+#include "openbmc/oem_composite_eat.hpp"
 #include "openbmc/openbmc_managers.hpp"
 #include "pcie.hpp"
 #include "power.hpp"
@@ -117,6 +118,11 @@ RedfishService::RedfishService(App& app)
     requestRoutesChassisNetworkAdapter(app);
     if constexpr (BMCWEB_REDFISH_COMPONENT_INTEGRITY)
     {
+        if constexpr (BMCWEB_REDFISH_COMPOSITE_EAT)
+        {
+            requestRoutesCompositeEatBundleAction(app);
+            requestRoutesCompositeEatBundleResult(app);
+        }
         requestRoutesComponentIntegrityCollection(app);
         requestRoutesComponentIntegrity(app);
     }

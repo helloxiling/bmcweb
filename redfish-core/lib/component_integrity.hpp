@@ -40,7 +40,7 @@ namespace component_integrity_utils
 {
 
 inline constexpr std::string_view componentIntegrityPath =
-    "/xyz/openbmc_project/component_integrity";
+    "/xyz/openbmc_project";
 inline constexpr std::string_view componentIntegrityInterface =
     "xyz.openbmc_project.Attestation.ComponentIntegrity";
 inline constexpr std::array<std::string_view, 1> componentIntegrityInterfaces =

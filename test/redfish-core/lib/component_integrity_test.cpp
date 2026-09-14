@@ -17,6 +17,11 @@ namespace redfish::component_integrity_utils
 namespace
 {
 
+TEST(ComponentIntegrityPath, SearchesPublicOpenBmcObjectTree)
+{
+    EXPECT_EQ(componentIntegrityPath, "/xyz/openbmc_project");
+}
+
 TEST(TranslateSecurityTechnologyType, MapsPublicInterfaceValues)
 {
     EXPECT_EQ(translateSecurityTechnologyType(

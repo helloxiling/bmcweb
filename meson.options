@@ -67,6 +67,14 @@ option(
                     https://github.com/openbmc/bmcweb/blob/master/DEVELOPING.md#redfish.''',
 )
 
+# BMCWEB_REDFISH_COMPONENT_INTEGRITY
+option(
+    'redfish-component-integrity',
+    type: 'feature',
+    value: 'disabled',
+    description: 'Enable Redfish ComponentIntegrity resources.',
+)
+
 # BMCWEB_HOST_SERIAL_SOCKET
 option(
     'host-serial-socket',

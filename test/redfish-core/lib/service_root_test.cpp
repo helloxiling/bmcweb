@@ -24,6 +24,16 @@ void assertServiceRootGet(crow::Response& res)
     nlohmann::json& json = res.jsonValue;
     EXPECT_EQ(json["@odata.id"], "/redfish/v1");
     EXPECT_EQ(json["@odata.type"], "#ServiceRoot.v1_15_0.ServiceRoot");
+    if constexpr (BMCWEB_REDFISH_COMPONENT_INTEGRITY)
+    {
+        EXPECT_EQ(json["ComponentIntegrity"]["@odata.id"],
+                  "/redfish/v1/ComponentIntegrity");
+        EXPECT_EQ(json["ComponentIntegrity"].size(), 1);
+    }
+    else
+    {
+        EXPECT_FALSE(json.contains("ComponentIntegrity"));
+    }
 
     EXPECT_EQ(json["AccountService"]["@odata.id"],
               "/redfish/v1/AccountService");
@@ -119,6 +129,11 @@ void assertServiceRootGet(crow::Response& res)
     EXPECT_EQ(json["ProtocolFeaturesSupported"]["DeepOperations"].size(), 2);
 
     size_t expectedSize = 22;
+
+    if constexpr (BMCWEB_REDFISH_COMPONENT_INTEGRITY)
+    {
+        expectedSize++;
+    }
 
     if (BMCWEB_REDFISH_AGGREGATION)
     {

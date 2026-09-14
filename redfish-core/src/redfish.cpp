@@ -12,6 +12,7 @@
 #include "cable.hpp"
 #include "certificate_service.hpp"
 #include "chassis.hpp"
+#include "component_integrity.hpp"
 #include "environment_metrics.hpp"
 #include "ethernet.hpp"
 #include "event_service.hpp"
@@ -114,6 +115,11 @@ RedfishService::RedfishService(App& app)
     requestRoutesChassisResetAction(app);
     requestRoutesChassisResetActionInfo(app);
     requestRoutesChassisNetworkAdapter(app);
+    if constexpr (BMCWEB_REDFISH_COMPONENT_INTEGRITY)
+    {
+        requestRoutesComponentIntegrityCollection(app);
+        requestRoutesComponentIntegrity(app);
+    }
     requestRoutesUpdateService(app);
     requestRoutesStorage(app);
     requestRoutesStorageController(app);

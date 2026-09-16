@@ -92,6 +92,48 @@ TEST(Router, OverlapingRoutes)
     EXPECT_TRUE(barCalled);
 }
 
+TEST(Router, PrefersLiteralRouteOverStringParameter)
+{
+    bool memberCalled = false;
+    auto memberCallback =
+        [&memberCalled](const Request&,
+                        const std::shared_ptr<bmcweb::AsyncResp>&,
+                        const std::string& memberId) {
+            memberCalled = true;
+            EXPECT_EQ(memberId, "smc0");
+        };
+    bool resultCalled = false;
+    auto resultCallback =
+        [&resultCalled](const Request&,
+                        const std::shared_ptr<bmcweb::AsyncResp>&) {
+            resultCalled = true;
+        };
+
+    Router router;
+    std::error_code ec;
+
+    router.newRuleTagged<getParameterTag("/foo/<str>/")>("/foo/<str>/")(
+        memberCallback);
+    router.newRuleTagged<getParameterTag("/foo/CompositeEATBundle/")>(
+        "/foo/CompositeEATBundle/")(resultCallback);
+    router.validate();
+
+    auto resultRequest = std::make_shared<Request>(
+        Request::Body{boost::beast::http::verb::get,
+                      "/foo/CompositeEATBundle", 11},
+        ec);
+    router.handle(resultRequest, std::make_shared<bmcweb::AsyncResp>());
+    EXPECT_TRUE(resultCalled);
+    EXPECT_FALSE(memberCalled);
+
+    resultCalled = false;
+    auto memberRequest = std::make_shared<Request>(
+        Request::Body{boost::beast::http::verb::get, "/foo/smc0", 11}, ec);
+    router.handle(memberRequest, std::make_shared<bmcweb::AsyncResp>());
+    EXPECT_TRUE(memberCalled);
+    EXPECT_FALSE(resultCalled);
+}
+
 TEST(Router, 404)
 {
     bool notFoundCalled = false;

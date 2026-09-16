@@ -156,6 +156,23 @@ class Trie
             return {node.ruleIndex, params};
         }
 
+        for (const typename ContainedType::ChildMap::value_type& kv :
+             node.children)
+        {
+            const std::string& fragment = kv.first;
+            const ContainedType& child = nodes[kv.second];
+
+            if (reqUrl.starts_with(fragment))
+            {
+                FindResult ret =
+                    findHelper(reqUrl.substr(fragment.size()), child, params);
+                if (ret.ruleIndex != 0U)
+                {
+                    return {ret.ruleIndex, std::move(ret.params)};
+                }
+            }
+        }
+
         if (node.stringParamChild != 0U)
         {
             size_t epos = 0;
@@ -189,23 +206,6 @@ class Trie
                 return {ret.ruleIndex, std::move(ret.params)};
             }
             params.pop_back();
-        }
-
-        for (const typename ContainedType::ChildMap::value_type& kv :
-             node.children)
-        {
-            const std::string& fragment = kv.first;
-            const ContainedType& child = nodes[kv.second];
-
-            if (reqUrl.starts_with(fragment))
-            {
-                FindResult ret =
-                    findHelper(reqUrl.substr(fragment.size()), child, params);
-                if (ret.ruleIndex != 0U)
-                {
-                    return {ret.ruleIndex, std::move(ret.params)};
-                }
-            }
         }
 
         return {0U, std::vector<std::string>()};

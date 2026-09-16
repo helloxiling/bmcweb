@@ -41,7 +41,7 @@ inline constexpr std::string_view interface =
     "xyz.openbmc_project.SPDM.CompositeEATBundle";
 inline constexpr std::string_view actionUri =
     "/redfish/v1/ComponentIntegrity/Actions/Oem/"
-    "OpenBMC.GetCompositeEATBundle";
+    "OpenBMCCompositeEATBundle.Generate";
 inline constexpr std::string_view resultUri =
     "/redfish/v1/ComponentIntegrity/CompositeEATBundle";
 inline constexpr std::array<std::string_view, 1> interfaces = {interface};
@@ -87,6 +87,23 @@ inline std::optional<Status> parseStatus(std::string_view status)
 inline bool decodeNonce(std::string_view encoded,
                         std::vector<std::uint8_t>& nonce)
 {
+    if (encoded.size() != 44 || encoded.back() != '=')
+    {
+        return false;
+    }
+    for (char character : encoded.substr(0, 43))
+    {
+        const bool isBase64Character =
+            (character >= 'A' && character <= 'Z') ||
+            (character >= 'a' && character <= 'z') ||
+            (character >= '0' && character <= '9') || character == '+' ||
+            character == '/';
+        if (!isBase64Character)
+        {
+            return false;
+        }
+    }
+
     std::string decoded;
     if (!crow::utility::base64Decode(encoded, decoded) || decoded.size() != 32)
     {
@@ -161,9 +178,25 @@ inline void afterFindProducer(
     const boost::system::error_code& ec,
     const dbus::utility::MapperGetObject& object)
 {
-    if (ec || object.empty())
+    if (ec)
     {
         BMCWEB_LOG_DEBUG("Composite EAT producer is unavailable");
+        return;
+    }
+
+    bool foundService = false;
+    for (const auto& [candidateService, candidateInterfaces] : object)
+    {
+        static_cast<void>(candidateInterfaces);
+        if (candidateService == service)
+        {
+            foundService = true;
+            break;
+        }
+    }
+    if (!foundService)
+    {
+        BMCWEB_LOG_DEBUG("Composite EAT producer service is unavailable");
         return;
     }
 
@@ -171,7 +204,7 @@ inline void afterFindProducer(
     openBmc["@odata.type"] =
         "#OpenBMCCompositeEATBundle.v1_0_0.ComponentIntegrityCollection";
     openBmc["CompositeEATBundle"]["@odata.id"] = resultUri;
-    openBmc["Actions"]["#OpenBMCCompositeEATBundle.GetCompositeEATBundle"]
+    openBmc["Actions"]["#OpenBMCCompositeEATBundle.Generate"]
            ["target"] = actionUri;
 }
 
@@ -203,12 +236,42 @@ inline void afterGenerate(const std::shared_ptr<bmcweb::AsyncResp>& asyncResp,
     asyncResp->res.addHeader(boost::beast::http::field::location, resultUri);
 }
 
+inline void afterGetResult(const std::shared_ptr<bmcweb::AsyncResp>& asyncResp,
+                           const boost::system::error_code& ec,
+                           const Properties& properties)
+{
+    if (ec.value() == EBADR)
+    {
+        messages::resourceNotFound(asyncResp->res, "CompositeEATBundle",
+                                   "CompositeEATBundle");
+        return;
+    }
+    if (ec)
+    {
+        BMCWEB_LOG_ERROR("Unable to read Composite EAT result: {}", ec);
+        messages::internalError(asyncResp->res);
+        return;
+    }
+
+    Result result = fillResult(asyncResp->res.jsonValue, properties);
+    if (result == Result::producerError)
+    {
+        messages::internalError(asyncResp->res);
+        return;
+    }
+    if (result == Result::invalid)
+    {
+        BMCWEB_LOG_ERROR("Invalid Composite EAT producer properties");
+        messages::internalError(asyncResp->res);
+    }
+}
+
 } // namespace composite_eat_utils
 
 inline void requestRoutesCompositeEatBundleAction(App& app)
 {
     BMCWEB_ROUTE(app, "/redfish/v1/ComponentIntegrity/Actions/Oem/"
-                      "OpenBMC.GetCompositeEATBundle")
+                      "OpenBMCCompositeEATBundle.Generate/")
         .privileges(redfish::privileges::postComponentIntegrityCollection)
         .methods(boost::beast::http::verb::post)(
             [&app](const crow::Request& req,
@@ -230,7 +293,7 @@ inline void requestRoutesCompositeEatBundleAction(App& app)
                 {
                     messages::actionParameterValueFormatError(
                         asyncResp->res, encodedNonce, "Nonce",
-                        "OpenBMC.GetCompositeEATBundle");
+                        "OpenBMCCompositeEATBundle.Generate");
                     return;
                 }
 
@@ -261,29 +324,8 @@ inline void requestRoutesCompositeEatBundleResult(App& app)
                     [asyncResp](
                         const boost::system::error_code& ec,
                         const composite_eat_utils::Properties& properties) {
-                        if (ec)
-                        {
-                            messages::resourceNotFound(asyncResp->res,
-                                                       "CompositeEATBundle",
-                                                       "CompositeEATBundle");
-                            return;
-                        }
-
-                        composite_eat_utils::Result result =
-                            composite_eat_utils::fillResult(
-                                asyncResp->res.jsonValue, properties);
-                        if (result ==
-                            composite_eat_utils::Result::producerError)
-                        {
-                            messages::internalError(asyncResp->res);
-                            return;
-                        }
-                        if (result == composite_eat_utils::Result::invalid)
-                        {
-                            BMCWEB_LOG_ERROR(
-                                "Invalid Composite EAT producer properties");
-                            messages::internalError(asyncResp->res);
-                        }
+                        composite_eat_utils::afterGetResult(asyncResp, ec,
+                                                            properties);
                     },
                     std::string(composite_eat_utils::service),
                     std::string(composite_eat_utils::objectPath),

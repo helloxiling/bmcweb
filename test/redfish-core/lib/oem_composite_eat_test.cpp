@@ -29,6 +29,12 @@ TEST(CompositeEatNonce, RejectsMalformedOrWrongLength)
     std::vector<std::uint8_t> nonce;
     EXPECT_FALSE(decodeNonce("not-base64", nonce));
     EXPECT_FALSE(decodeNonce("AAECAwQFBgc=", nonce));
+    EXPECT_FALSE(
+        decodeNonce("AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8", nonce));
+    EXPECT_FALSE(decodeNonce(
+        "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=trailing", nonce));
+    EXPECT_FALSE(
+        decodeNonce("AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh_=", nonce));
 }
 
 TEST(CompositeEatStatus, AcceptsOnlyContractStates)
@@ -97,6 +103,10 @@ TEST(CompositeEatResult, FailsClosedForErrorOrInvalidProperties)
 
 TEST(CompositeEatAction, MapsGenerateCompletionToHttpResponse)
 {
+    EXPECT_EQ(actionUri,
+              "/redfish/v1/ComponentIntegrity/Actions/Oem/"
+              "OpenBMCCompositeEATBundle.Generate");
+
     auto accepted = std::make_shared<bmcweb::AsyncResp>();
     afterGenerate(accepted, {});
     EXPECT_EQ(accepted->res.result(), boost::beast::http::status::accepted);
@@ -120,16 +130,34 @@ TEST(CompositeEatCollection, AdvertisesOnlyAnAvailableProducer)
     afterFindProducer(absent, {}, {});
     EXPECT_FALSE(absent->res.jsonValue.contains("Oem"));
 
+    auto wrongService = std::make_shared<bmcweb::AsyncResp>();
+    const dbus::utility::MapperGetObject wrongServiceObject = {
+        {"xyz.openbmc_project.AttestationProvider", {std::string(interface)}}};
+    afterFindProducer(wrongService, {}, wrongServiceObject);
+    EXPECT_FALSE(wrongService->res.jsonValue.contains("Oem"));
+
     auto available = std::make_shared<bmcweb::AsyncResp>();
     const dbus::utility::MapperGetObject object = {
-        {"xyz.openbmc_project.AttestationProvider", {std::string(interface)}}};
+        {std::string(service), {std::string(interface)}}};
     afterFindProducer(available, {}, object);
     const nlohmann::json& openBmc = available->res.jsonValue["Oem"]["OpenBMC"];
     EXPECT_EQ(openBmc["CompositeEATBundle"]["@odata.id"], resultUri);
     EXPECT_EQ(
-        openBmc["Actions"]["#OpenBMCCompositeEATBundle.GetCompositeEATBundle"]
+        openBmc["Actions"]["#OpenBMCCompositeEATBundle.Generate"]
                ["target"],
         actionUri);
+}
+
+TEST(CompositeEatResult, DistinguishesMissingResourceFromReadFailure)
+{
+    auto missing = std::make_shared<bmcweb::AsyncResp>();
+    afterGetResult(missing, {EBADR, boost::system::generic_category()}, {});
+    EXPECT_EQ(missing->res.result(), boost::beast::http::status::not_found);
+
+    auto failed = std::make_shared<bmcweb::AsyncResp>();
+    afterGetResult(failed, make_error_code(boost::system::errc::io_error), {});
+    EXPECT_EQ(failed->res.result(),
+              boost::beast::http::status::internal_server_error);
 }
 
 } // namespace

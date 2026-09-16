@@ -17,6 +17,7 @@
 #include "utils/dbus_utils.hpp"
 #include "utils/time_utils.hpp"
 
+#include <boost/system/errc.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/url/format.hpp>
 #include <sdbusplus/message/native_types.hpp>
@@ -53,16 +54,62 @@ inline constexpr std::array<std::string_view, 5> targetInterfaces = {
     "xyz.openbmc_project.Inventory.Item.Dimm",
     "xyz.openbmc_project.Inventory.Item.PCIeDevice"};
 
+struct ComponentProvider
+{
+    std::string service;
+    std::string objectPath;
+};
+
+inline std::vector<ComponentProvider> findComponentProviders(
+    const dbus::utility::MapperGetSubTreeResponse& subtree,
+    std::string_view componentId)
+{
+    std::vector<ComponentProvider> providers;
+    for (const auto& [objectPath, serviceMap] : subtree)
+    {
+        if (sdbusplus::object_path(objectPath).filename() != componentId)
+        {
+            continue;
+        }
+        for (const auto& [service, interfaces] : serviceMap)
+        {
+            if (std::ranges::find(interfaces, componentIntegrityInterface) !=
+                interfaces.end())
+            {
+                providers.push_back({service, objectPath});
+            }
+        }
+    }
+    return providers;
+}
+
+inline std::optional<std::vector<std::string>> getUniqueComponentIds(
+    const dbus::utility::MapperGetSubTreePathsResponse& objects)
+{
+    std::vector<std::string> ids;
+    for (const std::string& object : objects)
+    {
+        std::string id = sdbusplus::object_path(object).filename();
+        if (id.empty())
+        {
+            continue;
+        }
+        if (std::ranges::find(ids, id) != ids.end())
+        {
+            return std::nullopt;
+        }
+        ids.push_back(std::move(id));
+    }
+    std::ranges::sort(ids);
+    return ids;
+}
+
 inline std::optional<std::string> translateSecurityTechnologyType(
     std::string_view type)
 {
     if (type.ends_with(".SPDM"))
     {
         return "SPDM";
-    }
-    if (type.ends_with(".TPM"))
-    {
-        return "TPM";
     }
     if (type.ends_with(".OEM"))
     {
@@ -146,6 +193,11 @@ inline bool fillProperties(nlohmann::json& json,
     json["ComponentIntegrityEnabled"] = *enabled;
     json["ComponentIntegrityType"] = *redfishType;
     json["ComponentIntegrityTypeVersion"] = *typeVersion;
+    if (*enabled && *redfishType == "SPDM")
+    {
+        json["SPDM"]["Requester"]["@odata.id"] = boost::urls::format(
+            "/redfish/v1/Managers/{}", BMCWEB_REDFISH_MANAGER_URI_NAME);
+    }
     if (*lastUpdated != 0)
     {
         json["LastUpdated"] = time_utils::getDateTimeUintMs(*lastUpdated);
@@ -271,28 +323,64 @@ inline void afterGetComponentIntegrity(
         return;
     }
 
-    for (const auto& [objectPath, serviceMap] : subtree)
+    std::vector<component_integrity_utils::ComponentProvider> providers =
+        component_integrity_utils::findComponentProviders(subtree, componentId);
+    if (providers.size() > 1)
     {
-        if (sdbusplus::object_path(objectPath).filename() != componentId)
-        {
-            continue;
-        }
-        for (const auto& [service, interfaces] : serviceMap)
-        {
-            if (std::ranges::find(
-                    interfaces,
-                    component_integrity_utils::componentIntegrityInterface) !=
-                interfaces.end())
-            {
-                getComponentIntegrityData(asyncResp, componentId, service,
-                                          objectPath);
-                return;
-            }
-        }
+        BMCWEB_LOG_ERROR("ComponentIntegrity ID {} has {} D-Bus providers",
+                         componentId, providers.size());
+        messages::internalError(asyncResp->res);
+        return;
+    }
+    if (providers.empty())
+    {
+        messages::resourceNotFound(asyncResp->res, "ComponentIntegrity",
+                                   componentId);
+        return;
     }
 
-    messages::resourceNotFound(asyncResp->res, "ComponentIntegrity",
-                               componentId);
+    getComponentIntegrityData(asyncResp, componentId, providers.front().service,
+                              providers.front().objectPath);
+}
+
+inline void afterGetComponentIntegrityCollection(
+    const std::shared_ptr<bmcweb::AsyncResp>& asyncResp,
+    const boost::system::error_code& ec,
+    const dbus::utility::MapperGetSubTreePathsResponse& objects)
+{
+    if (ec == boost::system::errc::io_error)
+    {
+        asyncResp->res.jsonValue["Members"] = nlohmann::json::array();
+        asyncResp->res.jsonValue["Members@odata.count"] = 0;
+        return;
+    }
+    if (ec)
+    {
+        BMCWEB_LOG_ERROR("Unable to enumerate ComponentIntegrity members: {}",
+                         ec);
+        messages::internalError(asyncResp->res);
+        return;
+    }
+
+    std::optional<std::vector<std::string>> ids =
+        component_integrity_utils::getUniqueComponentIds(objects);
+    if (!ids)
+    {
+        BMCWEB_LOG_ERROR("ComponentIntegrity object paths contain duplicate "
+                         "Redfish member IDs");
+        messages::internalError(asyncResp->res);
+        return;
+    }
+
+    nlohmann::json& members = asyncResp->res.jsonValue["Members"];
+    members = nlohmann::json::array();
+    for (const std::string& id : *ids)
+    {
+        members.push_back(
+            {{"@odata.id",
+              boost::urls::format("/redfish/v1/ComponentIntegrity/{}", id)}});
+    }
+    asyncResp->res.jsonValue["Members@odata.count"] = members.size();
 }
 
 inline void handleComponentIntegrityGet(
@@ -328,10 +416,10 @@ inline void handleComponentIntegrityCollectionGet(
     {
         composite_eat_utils::addCollectionExtension(asyncResp);
     }
-    collection_util::getCollectionMembers(
-        asyncResp, boost::urls::url("/redfish/v1/ComponentIntegrity"),
+    dbus::utility::getSubTreePaths(
+        std::string(component_integrity_utils::componentIntegrityPath), 0,
         component_integrity_utils::componentIntegrityInterfaces,
-        std::string(component_integrity_utils::componentIntegrityPath));
+        std::bind_front(afterGetComponentIntegrityCollection, asyncResp));
 }
 
 inline void requestRoutesComponentIntegrity(App& app)

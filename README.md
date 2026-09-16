@@ -13,6 +13,8 @@ The webserver implements a few distinct interfaces:
 - Serial: A serial websocket for interacting with the host serial console
   through websockets.
 - Redfish: A protocol compliant, [DBus to Redfish translator](docs/Redfish.md).
+  The [ComponentIntegrity and Composite EAT reference implementation](docs/COMPONENT_INTEGRITY.md)
+  documents its integrity and attestation APIs.
 - KVM: A websocket based implementation of the RFB (VNC) frame buffer protocol
   intended to mate to webui-vue to provide a complete KVM implementation.
 

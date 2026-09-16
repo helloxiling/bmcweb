@@ -14,30 +14,37 @@
   <edmx:DataServices>
     <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="OpenBMCCompositeEATBundle">
       <Annotation Term="Redfish.OwningEntity" String="OpenBMC"/>
-    </Schema>
-    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="OpenBMCCompositeEATBundle.v1_0_0">
-      <Annotation Term="Redfish.OwningEntity" String="OpenBMC"/>
-      <Annotation Term="Redfish.Release" String="1.0"/>
-      <ComplexType Name="ComponentIntegrityCollection" BaseType="Resource.OemObject">
-        <Property Name="Actions" Type="OpenBMCCompositeEATBundle.v1_0_0.Actions"/>
-        <NavigationProperty Name="CompositeEATBundle" Type="OpenBMCCompositeEATBundle.v1_0_0.CompositeEATBundle"/>
-      </ComplexType>
-      <ComplexType Name="Actions" BaseType="Resource.OemActions"/>
-      <Action Name="GetCompositeEATBundle" IsBound="true">
+      <Action Name="Generate" IsBound="true">
         <Parameter Name="OpenBMCCompositeEATBundle" Type="OpenBMCCompositeEATBundle.v1_0_0.Actions"/>
         <Parameter Name="Nonce" Type="Edm.String" Nullable="false" MaxLength="44">
           <Annotation Term="OData.Description" String="A base64-encoded 32-byte verifier nonce."/>
           <Annotation Term="Validation.Pattern" String="^[A-Za-z0-9+/]{43}=$"/>
         </Parameter>
       </Action>
+    </Schema>
+    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="OpenBMCCompositeEATBundle.v1_0_0">
+      <Annotation Term="Redfish.OwningEntity" String="OpenBMC"/>
+      <Annotation Term="Redfish.Release" String="1.0"/>
+      <ComplexType Name="ComponentIntegrityCollection" BaseType="Resource.OemObject">
+        <Property Name="Actions" Type="OpenBMCCompositeEATBundle.v1_0_0.Actions"/>
+        <NavigationProperty Name="CompositeEATBundle" Type="Resource.Item"/>
+      </ComplexType>
+      <ComplexType Name="Actions"/>
+      <EnumType Name="Status">
+        <Member Name="Idle"/>
+        <Member Name="InProgress"/>
+        <Member Name="Ready"/>
+        <Member Name="Error"/>
+      </EnumType>
       <EntityType Name="CompositeEATBundle" BaseType="Resource.v1_0_0.Resource">
         <Annotation Term="Redfish.Uris">
           <Collection>
             <String>/redfish/v1/ComponentIntegrity/CompositeEATBundle</String>
           </Collection>
         </Annotation>
-        <Property Name="Status" Type="Edm.String" Nullable="false">
+        <Property Name="Status" Type="OpenBMCCompositeEATBundle.v1_0_0.Status" Nullable="false">
           <Annotation Term="OData.Permissions" EnumMember="OData.Permission/Read"/>
+          <Annotation Term="Redfish.Required"/>
         </Property>
         <Property Name="CompositeEATBundle" Type="Edm.String">
           <Annotation Term="OData.Permissions" EnumMember="OData.Permission/Read"/>
